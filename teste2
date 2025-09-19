@@ -2,181 +2,22 @@ repeat wait() until game:IsLoaded()
 
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
-local humanoid = char:WaitForChild("Humanoid")
-local hrp = char:WaitForChild("HumanoidRootPart")
 
--- Atualiza personagem ao morrer/respawnar
-player.CharacterAdded:Connect(function(c)
-    char = c
-    humanoid = char:WaitForChild("Humanoid")
-    hrp = char:WaitForChild("HumanoidRootPart")
+-- Atualiza o personagem se morrer
+player.CharacterAdded:Connect(function(newChar)
+    char = newChar
 end)
 
--- GUI Principal
-local ScreenGui = Instance.new("ScreenGui")
-ScreenGui.Name = "PainelMobile"
-ScreenGui.ResetOnSpawn = false
-ScreenGui.Parent = player:WaitForChild("PlayerGui")
+-- Ativa o noclip
+local RunService = game:GetService("RunService")
+local noclip = true
 
--- Criador de botões
-function criarBotao(nome, posY, funcao)
-    local btn = Instance.new("TextButton")
-    btn.Size = UDim2.new(0, 160, 0, 50)
-    btn.Position = UDim2.new(0, 20, 0, posY)
-    btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    btn.TextColor3 = Color3.fromRGB(255, 255, 255)
-    btn.Text = nome
-    btn.Font = Enum.Font.SourceSansBold
-    btn.TextSize = 20
-    btn.Parent = ScreenGui
-
-    btn.MouseButton1Click:Connect(function()
-        funcao()
-        btn.Text = nome .. " ✔️"
-        btn.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    end)
-end
-
--- FUNÇÕES
-
--- 1. Speed Hack
-local function ativarSpeed()
-    humanoid.WalkSpeed = 100
-end
-
--- 2. Jump Hack
-local function ativarJump()
-    humanoid.JumpPower = 120
-end
-
--- 3. Teleporte
-local function teleportar()
-    hrp.CFrame = CFrame.new(Vector3.new(0, 25, 0))
-end
-
--- 4. AutoFarm (Coins)
-local autofarmRodando = false
-local function iniciarAutoFarm()
-    if autofarmRodando then return end
-    autofarmRodando = true
-
-    task.spawn(function()
-        while autofarmRodando and char and hrp do
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Part") and obj.Name == "Coin" then
-                    hrp.CFrame = obj.CFrame
-                    task.wait(0.2)
-                end
+RunService.Stepped:Connect(function()
+    if noclip and char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") and part.CanCollide == true then
+                part.CanCollide = false
             end
-            task.wait(1)
         end
-    end)
-end
-
--- 5. Fly
-local voando = false
-local function ativarFly()
-    if voando then return end
-    voando = true
-
-    local bodyGyro = Instance.new("BodyGyro", hrp)
-    local bodyVelocity = Instance.new("BodyVelocity", hrp)
-    bodyGyro.P = 9e4
-    bodyGyro.maxTorque = Vector3.new(9e9, 9e9, 9e9)
-    bodyGyro.CFrame = hrp.CFrame
-    bodyVelocity.Velocity = Vector3.new(0, 0, 0)
-    bodyVelocity.MaxForce = Vector3.new(9e9, 9e9, 9e9)
-
-    local uis = game:GetService("UserInputService")
-
-    uis.InputBegan:Connect(function(input)
-        if not voando then return end
-        if input.KeyCode == Enum.KeyCode.W then
-            bodyVelocity.Velocity = hrp.CFrame.LookVector * 100
-        elseif input.KeyCode == Enum.KeyCode.S then
-            bodyVelocity.Velocity = -hrp.CFrame.LookVector * 100
-        elseif input.KeyCode == Enum.KeyCode.Space then
-            bodyVelocity.Velocity = Vector3.new(0, 100, 0)
-        elseif input.KeyCode == Enum.KeyCode.LeftShift then
-            bodyVelocity.Velocity = Vector3.new(0, -100, 0)
-        end
-    end)
-end
-
--- 6. NoClip
-local noclipAtivo = false
-local function ativarNoClip()
-    if noclipAtivo then return end
-    noclipAtivo = true
-    task.spawn(function()
-        while noclipAtivo and char do
-            for _, part in pairs(char:GetDescendants()) do
-                if part:IsA("BasePart") then
-                    part.CanCollide = false
-                end
-            end
-            task.wait()
-        end
-    end)
-end
-
--- 7. Auto Attack
-local autoAtacar = false
-local function autoAttack()
-    if autoAtacar then return end
-    autoAtacar = true
-
-    task.spawn(function()
-        while autoAtacar and hrp and humanoid do
-            local alvo = nil
-            local menorDist = math.huge
-
-            for _, obj in pairs(workspace:GetDescendants()) do
-                if obj:IsA("Model") and obj:FindFirstChild("Humanoid") and obj ~= char then
-                    local targetHRP = obj:FindFirstChild("HumanoidRootPart")
-                    if targetHRP then
-                        local dist = (hrp.Position - targetHRP.Position).Magnitude
-                        if dist < menorDist then
-                            menorDist = dist
-                            alvo = obj
-                        end
-                    end
-                end
-            end
-
-            if alvo and alvo:FindFirstChild("HumanoidRootPart") then
-                hrp.CFrame = alvo.HumanoidRootPart.CFrame * CFrame.new(0, 0, -2)
-                humanoid:MoveTo(alvo.HumanoidRootPart.Position)
-                alvo.Humanoid:TakeDamage(10)
-            end
-
-            task.wait(0.5)
-        end
-    end)
-end
-
--- 8. Farm Boss
-local function farmBoss()
-    task.spawn(function()
-        while true do
-            for _, boss in pairs(workspace:GetDescendants()) do
-                if boss:IsA("Model") and boss.Name == "Boss" and boss:FindFirstChild("Humanoid") then
-                    hrp.CFrame = boss.HumanoidRootPart.CFrame * CFrame.new(0, 0, -3)
-                    boss.Humanoid:TakeDamage(20)
-                    wait(0.5)
-                end
-            end
-            wait(1)
-        end
-    end)
-end
-
--- BOTÕES (posição Y da tela)
-criarBotao("Speed", 0.05, ativarSpeed)
-criarBotao("Jump", 0.12, ativarJump)
-criarBotao("Teleport", 0.19, teleportar)
-criarBotao("AutoFarm", 0.26, iniciarAutoFarm)
-criarBotao("Fly", 0.33, ativarFly)
-criarBotao("NoClip", 0.40, ativarNoClip)
-criarBotao("AutoAttack", 0.47, autoAttack)
-criarBotao("FarmBoss", 0.54, farmBoss)
+    end
+end)
