@@ -1,54 +1,91 @@
-repeat wait() until game:IsLoaded()
-
 local player = game.Players.LocalPlayer
 local char = player.Character or player.CharacterAdded:Wait()
-
--- Atualiza o personagem se morrer
-player.CharacterAdded:Connect(function(newChar)
-    char = newChar
-end)
+local hrp = char:WaitForChild("HumanoidRootPart")
+local humanoid = char:WaitForChild("Humanoid")
+local uis = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
 
 -- Cria a GUI
-local gui = Instance.new("ScreenGui")
-gui.Name = "NoClipGUI"
-gui.ResetOnSpawn = false
-gui.Parent = player:WaitForChild("PlayerGui")
+local screenGui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+screenGui.Name = "HackGUI"
+screenGui.ResetOnSpawn = false
 
--- Cria o botão
-local botao = Instance.new("TextButton")
-botao.Size = UDim2.new(0, 160, 0, 50)
-botao.Position = UDim2.new(0, 20, 0, 0.1)
-botao.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-botao.TextColor3 = Color3.fromRGB(255, 255, 255)
-botao.Font = Enum.Font.SourceSansBold
-botao.TextSize = 20
-botao.Text = "Ativar NoClip"
-botao.Parent = gui
+-- Função para criar botões
+local function criarBotao(texto, posY)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 160, 0, 50)
+	btn.Position = UDim2.new(0, 20, 0, posY)
+	btn.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
+	btn.TextColor3 = Color3.new(1, 1, 1)
+	btn.Font = Enum.Font.SourceSansBold
+	btn.TextSize = 20
+	btn.Text = texto
+	btn.Parent = screenGui
+	return btn
+end
 
--- Variável de controle
+-- 🛩️ Fly
+local flyAtivo = false
+local bv, bg
+
+local function ativarFly()
+	if flyAtivo then
+		flyAtivo = false
+		if bv then bv:Destroy() end
+		if bg then bg:Destroy() end
+	else
+		flyAtivo = true
+		bv = Instance.new("BodyVelocity", hrp)
+		bg = Instance.new("BodyGyro", hrp)
+
+		bv.MaxForce = Vector3.new(1e9, 1e9, 1e9)
+		bg.MaxTorque = Vector3.new(1e9, 1e9, 1e9)
+		bv.Velocity = Vector3.zero
+		bg.CFrame = hrp.CFrame
+
+		RunService.RenderStepped:Connect(function()
+			if flyAtivo then
+				bv.Velocity = Vector3.new(0, 0, 0)
+				if uis:IsKeyDown(Enum.KeyCode.W) then
+					bv.Velocity = hrp.CFrame.LookVector * 80
+				elseif uis:IsKeyDown(Enum.KeyCode.S) then
+					bv.Velocity = -hrp.CFrame.LookVector * 80
+				elseif uis:IsKeyDown(Enum.KeyCode.Space) then
+					bv.Velocity = Vector3.new(0, 80, 0)
+				elseif uis:IsKeyDown(Enum.KeyCode.LeftShift) then
+					bv.Velocity = Vector3.new(0, -80, 0)
+				end
+				bg.CFrame = hrp.CFrame
+			end
+		end)
+	end
+end
+
+-- 🚪 NoClip
 local noclipAtivo = false
-
--- Loop do NoClip
-local RunService = game:GetService("RunService")
 RunService.Stepped:Connect(function()
-    if noclipAtivo and char then
-        for _, part in pairs(char:GetDescendants()) do
-            if part:IsA("BasePart") then
-                part.CanCollide = false
-            end
-        end
-    end
+	if noclipAtivo and char then
+		for _, part in pairs(char:GetDescendants()) do
+			if part:IsA("BasePart") then
+				part.CanCollide = false
+			end
+		end
+	end
 end)
 
--- Quando o botão for clicado
-botao.MouseButton1Click:Connect(function()
-    noclipAtivo = not noclipAtivo
+local function ativarNoClip()
+	noclipAtivo = not noclipAtivo
+end
 
-    if noclipAtivo then
-        botao.Text = "NoClip Ativado ✔️"
-        botao.BackgroundColor3 = Color3.fromRGB(0, 200, 0)
-    else
-        botao.Text = "Ativar NoClip"
-        botao.BackgroundColor3 = Color3.fromRGB(0, 170, 255)
-    end
+-- Criar os botões
+local btnFly = criarBotao("Ativar Fly", 0.1)
+btnFly.MouseButton1Click:Connect(function()
+	ativarFly()
+	btnFly.Text = flyAtivo and "Desativar Fly" or "Ativar Fly"
+end)
+
+local btnNoclip = criarBotao("Ativar NoClip", 0.2)
+btnNoclip.MouseButton1Click:Connect(function()
+	ativarNoClip()
+	btnNoclip.Text = noclipAtivo and "Desativar NoClip" or "Ativar NoClip"
 end)
